@@ -4,14 +4,14 @@
 
 **Project Sentinel** is a fully integrated enterprise-grade cloud security modernization project implemented locally using open-source tools. It demonstrates end-to-end security for cloud-native platforms including IAM & access control, infrastructure security, container security, secrets management, network security, runtime threat detection, compliance, and monitoring.
 
-## 🎯 Key Objectives
+##  Key Objectives
 
 - **Simulate** an enterprise-grade cloud environment locally
 - **Demonstrate** security controls across multiple domains (IAM, IaC, container security, runtime detection, network policies, monitoring, compliance)
 - **Showcase** automation, policy enforcement, and reporting as used in enterprise environments
 - **Provide** a blueprint for scaling to AWS, Azure, or GCP
 
-## 🏗 Architecture Overview
+## Architecture Overview
 
 ```mermaid
 graph TB
@@ -79,19 +79,19 @@ graph TB
     ELK --> GRAF
 ```
 
-## 🌥️ **Cloud Implementation Available!**
+##  **Cloud Implementation Available!**
 
 Project Sentinel now supports deployment to major cloud providers with enhanced security integrations:
 
-### ☁️ **Supported Cloud Platforms**
+###  **Supported Cloud Platforms**
 
 | Cloud Provider | Status | Key Features |
 |---------------|---------|--------------|
-| **🔸 AWS EKS** | ✅ Ready | GuardDuty, Security Hub, Config, ECR scanning |
-| **🔹 Azure AKS** | ✅ Ready | Defender, Sentinel, Policy, ACR scanning |
-| **🔸 GCP GKE** | 📋 Planned | Security Command Center, Binary Authorization |
+| **🔸 AWS EKS** |  Ready | GuardDuty, Security Hub, Config, ECR scanning |
+| **🔹 Azure AKS** |  Ready | Defender, Sentinel, Policy, ACR scanning |
+| **🔸 GCP GKE** |  Planned | Security Command Center, Binary Authorization |
 
-### 🚀 **Quick Cloud Deployment**
+###  **Quick Cloud Deployment**
 
 **AWS EKS:**
 ```bash
@@ -107,7 +107,7 @@ terraform init
 terraform apply -var="cluster_name=sentinel-azure"
 ```
 
-### 🛡️ **Enhanced Cloud Security Features**
+###  **Enhanced Cloud Security Features**
 - **Native threat detection** (GuardDuty/Defender)
 - **SIEM integration** (Security Hub/Sentinel)
 - **Compliance automation** (Config/Policy)
@@ -115,11 +115,11 @@ terraform apply -var="cluster_name=sentinel-azure"
 - **Secrets management** (AWS Secrets Manager/Key Vault)
 - **Network security** (VPC/VNet with advanced policies)
 
-**📖 [Complete Cloud Implementation Guide](./cloud/README.md)**
+** [Complete Cloud Implementation Guide](./cloud/README.md)**
 
 ---
 
-## 🛡 Security Domains Covered
+##  Security Domains Covered
 
 | Security Domain | Business Problem Addressed | Tools/Components |
 |----------------|---------------------------|------------------|
@@ -132,7 +132,7 @@ terraform apply -var="cluster_name=sentinel-azure"
 | **Monitoring & Observability** | Lack of alerts and centralized logging | ELK stack, Grafana, Prometheus, Loki |
 | **Compliance & Reporting** | Inability to prove compliance (CIS/NIST/ISO) | Custom compliance engine, automated dashboards |
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Prerequisites
 
@@ -177,7 +177,7 @@ terraform apply -var="cluster_name=sentinel-azure"
    ./demos/run-demo.sh
    ```
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 sentinel-security/
@@ -200,35 +200,35 @@ sentinel-security/
 
 ## 🔧 Implementation Phases
 
-### Phase 0: Setup Repository & Scaffold (1–2 days) ✅
+### Phase 0: Setup Repository & Scaffold (1–2 days) 
 - [x] Create folder structure
 - [x] Initialize GitHub repo
 - [x] Add README with architecture diagram
 - [x] GitHub Actions skeleton
 
-### Phase 1: Local Kubernetes Cluster & App Deployment (3–5 days) ✅
+### Phase 1: Local Kubernetes Cluster & App Deployment (3–5 days) 
 - [x] Deploy kind cluster with namespaces
 - [x] Deploy demo web service + Postgres DB
 - [x] Implement Vault-managed dynamic DB credentials
 
-### Phase 2: DevSecOps Pipeline & IaC Scanning (3–5 days) ✅
+### Phase 2: DevSecOps Pipeline & IaC Scanning (3–5 days) 
 - [x] Terraform templates with intentional misconfigurations
 - [x] CI pipeline with Trivy scans and policy checks
 - [x] Auto-fail on policy violations
 
-### Phase 3: Runtime Security & Observability (3–5 days) ✅
+### Phase 3: Runtime Security & Observability (3–5 days) 
 - [x] Deploy Falco for runtime threat detection
 - [x] Setup ELK/Grafana-Loki + Prometheus
 - [x] Attack simulations and alert testing
 - [x] End-to-end security demonstration script
 
-### Phase 4: Policy Enforcement & Compliance Reporting (2–3 days) �
+### Phase 4: Policy Enforcement & Compliance Reporting (2–3 days) 
 - [x] Compliance engine with CIS/NIST/ISO27001 framework mapping
 - [x] Automated compliance scoring and reporting
 - [ ] OPA/Gatekeeper admission control policies
 - [ ] Automated remediation playbooks
 
-## 🎪 Demo Scenarios
+##  Demo Scenarios
 
 ### 1. Infrastructure Security Demo
 - Scan Terraform code with Checkov
@@ -250,7 +250,7 @@ sentinel-security/
 - NIST compliance dashboard
 - Automated remediation tracking
 
-## 🚀 Complete Deployment Guide
+##  Complete Deployment Guide
 
 ### 1. Initial Setup
 
@@ -395,7 +395,7 @@ Generate comprehensive reports including:
 - Remediation recommendations
 - Risk prioritization
 
-## 🎯 Key Demonstrations
+##  Key Demonstrations
 
 ### Attack Detection Demo
 
@@ -411,7 +411,7 @@ Generate comprehensive reports including:
 3. **Vulnerability Management**: Continuous scanning and risk assessment
 4. **Audit Trail**: Complete security event logging and reporting
 
-## 🔍 Security Tools Integration
+##  Security Tools Integration
 
 ### Infrastructure Security
 - **Checkov**: IaC security scanning
@@ -434,14 +434,14 @@ Generate comprehensive reports including:
 - **ELK Stack**: Log aggregation
 - **Loki**: Log management
 
-## 📊 Compliance Frameworks
+##  Compliance Frameworks
 
 - **CIS Controls**: Center for Internet Security benchmarks
 - **NIST Cybersecurity Framework**: Risk management guidelines
 - **ISO 27001**: Information security management
 - **SOC 2**: Service organization controls
 
-## 🚨 Alert Rules
+##  Alert Rules
 
 - High/Critical CVE vulnerabilities detected
 - Policy violations in deployment attempts
@@ -450,26 +450,14 @@ Generate comprehensive reports including:
 - Resource quota violations
 - Network policy violations
 
-## 🤝 Contributing
+##  Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Run security scans locally
 4. Submit a pull request
 
-## 📚 Documentation
-
-- [Architecture Deep Dive](docs/architecture.md)
-- [Security Policies](docs/security-policies.md)
-- [Deployment Guide](docs/deployment.md)
-- [Demo Scenarios](docs/demos.md)
-- [Troubleshooting](docs/troubleshooting.md)
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🏆 Acknowledgments
+##  Acknowledgments
 
 - Open source security community
 - CNCF security projects
@@ -478,4 +466,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Project Sentinel** - Securing the cloud, one deployment at a time. 🛡️# Project-Sentinel--Cloud-Native-Security-Modernization-IAM-IaC-Security-Monitoring-Compliance 
+**Project Sentinel** - Securing the cloud, one deployment at a time. 
+
+# Project-Sentinel--Cloud-Native-Security-Modernization-IAM-IaC-Security-Monitoring-Compliance 
