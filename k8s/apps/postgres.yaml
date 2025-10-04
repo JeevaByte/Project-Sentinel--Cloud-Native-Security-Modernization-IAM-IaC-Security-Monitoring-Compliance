@@ -1,0 +1,165 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: sentinel-apps
+  labels:
+    app: postgres
+    tier: database
+    # MISSING: security-policy label
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+        tier: database
+    spec:
+      # VULNERABILITY: No security context
+      containers:
+      - name: postgres
+        image: postgres:13  # VULNERABILITY: Using generic tag instead of specific version
+        
+        # VULNERABILITY: No security context
+        # securityContext:
+        #   allowPrivilegeEscalation: false
+        #   readOnlyRootFilesystem: false  # Database needs write access
+        #   runAsNonRoot: true
+        #   runAsUser: 999  # postgres user
+        #   capabilities:
+        #     drop:
+        #     - ALL
+        #     add:
+        #     - CHOWN
+        #     - DAC_OVERRIDE
+        #     - FOWNER
+        #     - SETGID
+        #     - SETUID
+        
+        ports:
+        - containerPort: 5432
+          name: postgres
+        
+        # VULNERABILITY: Hardcoded database credentials
+        env:
+        - name: POSTGRES_DB
+          value: demo
+        - name: POSTGRES_USER
+          value: user
+        - name: POSTGRES_PASSWORD
+          value: password  # VULNERABLE: Plain text password
+        - name: POSTGRES_HOST_AUTH_METHOD
+          value: trust  # VULNERABLE: No authentication required
+        
+        # VULNERABILITY: No resource limits
+        # resources:
+        #   limits:
+        #     cpu: 1000m
+        #     memory: 1Gi
+        #   requests:
+        #     cpu: 500m
+        #     memory: 512Mi
+        
+        # VULNERABILITY: No health checks
+        # livenessProbe:
+        #   exec:
+        #     command:
+        #     - /bin/sh
+        #     - -c
+        #     - pg_isready -U $POSTGRES_USER -d $POSTGRES_DB
+        #   initialDelaySeconds: 30
+        #   periodSeconds: 10
+        # readinessProbe:
+        #   exec:
+        #     command:
+        #     - /bin/sh
+        #     - -c
+        #     - pg_isready -U $POSTGRES_USER -d $POSTGRES_DB
+        #   initialDelaySeconds: 5
+        #   periodSeconds: 5
+        
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        # VULNERABILITY: Mounting host directories
+        - name: host-tmp
+          mountPath: /tmp/host
+      
+      volumes:
+      - name: postgres-data
+        # VULNERABILITY: Using emptyDir instead of persistent storage
+        emptyDir: {}
+      # VULNERABILITY: Mounting host directory
+      - name: host-tmp
+        hostPath:
+          path: /tmp
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: sentinel-apps
+  labels:
+    app: postgres
+spec:
+  # VULNERABILITY: Exposing database externally
+  type: NodePort
+  ports:
+  - port: 5432
+    targetPort: 5432
+    nodePort: 30432  # VULNERABLE: Database accessible from outside cluster
+    protocol: TCP
+    name: postgres
+  selector:
+    app: postgres
+
+---
+# VULNERABILITY: ConfigMap with sensitive data
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: sentinel-apps
+data:
+  # VULNERABLE: Database credentials in ConfigMap
+  POSTGRES_DB: demo
+  POSTGRES_USER: user
+  POSTGRES_PASSWORD: password
+  # VULNERABLE: Weak database configuration
+  postgresql.conf: |
+    # VULNERABLE: Weak security settings
+    log_statement = 'none'  # Should log all statements for security
+    log_connections = off   # Should be on for security monitoring
+    log_disconnections = off # Should be on for security monitoring
+    ssl = off              # Should be on for encryption
+    password_encryption = md5  # Should use scram-sha-256
+    shared_preload_libraries = ''  # Missing security extensions
+    
+    # VULNERABLE: Permissive access settings
+    listen_addresses = '*'
+    max_connections = 1000  # Too high, potential DoS
+    
+  pg_hba.conf: |
+    # VULNERABLE: Trust authentication for all connections
+    local   all             all                                     trust
+    host    all             all             127.0.0.1/32            trust
+    host    all             all             ::1/128                 trust
+    host    all             all             0.0.0.0/0               trust
+
+---
+# VULNERABILITY: Secret with base64 encoded passwords (easily decoded)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+  namespace: sentinel-apps
+type: Opaque
+data:
+  # VULNERABLE: Base64 is not encryption!
+  username: dXNlcg==        # user
+  password: cGFzc3dvcmQ=    # password
+  database: ZGVtbw==        # demo

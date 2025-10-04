@@ -1,0 +1,20 @@
+# Exclude documentation and source folders from docs
+docs/diagrams/documentation/
+docs/diagrams/source/
+
+# Keep PNG and SVG folders and MD files in docs
+!docs/*.md
+!docs/diagrams/png/
+!docs/diagrams/svg/
+!docs/diagrams/README.md
+
+# Standard exclusions
+node_modules/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.log
+.DS_Store
+Thumbs.db

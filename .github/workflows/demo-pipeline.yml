@@ -1,0 +1,152 @@
+name: Demo and Testing
+
+on:
+  schedule:
+    - cron: '0 8 * * *'  # Daily at 8 AM UTC
+  workflow_dispatch:
+    inputs:
+      demo_type:
+        description: 'Type of demo to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - infrastructure
+        - container
+        - runtime
+        - compliance
+
+jobs:
+  setup-environment:
+    name: Setup Demo Environment
+    runs-on: ubuntu-latest
+    outputs:
+      cluster_name: ${{ steps.setup.outputs.cluster_name }}
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup kind cluster
+      id: setup
+      uses: helm/kind-action@v1.8.0
+      with:
+        cluster_name: sentinel-demo-${{ github.run_number }}
+        config: k8s/kind-config.yaml
+    
+    - name: Install security tools
+      run: |
+        ./scripts/install-security-tools.sh
+    
+    - name: Deploy applications
+      run: |
+        ./scripts/deploy-demo-apps.sh
+
+  infrastructure-demo:
+    name: Infrastructure Security Demo
+    runs-on: ubuntu-latest
+    needs: setup-environment
+    if: contains(github.event.inputs.demo_type, 'infrastructure') || contains(github.event.inputs.demo_type, 'all')
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run infrastructure security demo
+      run: |
+        ./demos/infrastructure-security-demo.sh
+    
+    - name: Capture demo results
+      run: |
+        mkdir -p demo-results/infrastructure
+        cp scans/checkov-*.json demo-results/infrastructure/
+        cp scans/tfsec-*.json demo-results/infrastructure/
+    
+    - name: Upload demo results
+      uses: actions/upload-artifact@v3
+      with:
+        name: infrastructure-demo-results
+        path: demo-results/infrastructure/
+
+  container-demo:
+    name: Container Security Demo
+    runs-on: ubuntu-latest
+    needs: setup-environment
+    if: contains(github.event.inputs.demo_type, 'container') || contains(github.event.inputs.demo_type, 'all')
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run container security demo
+      run: |
+        ./demos/container-security-demo.sh
+    
+    - name: Capture demo results
+      run: |
+        mkdir -p demo-results/container
+        cp scans/trivy-*.json demo-results/container/
+        cp scans/snyk-*.json demo-results/container/
+    
+    - name: Upload demo results
+      uses: actions/upload-artifact@v3
+      with:
+        name: container-demo-results
+        path: demo-results/container/
+
+  runtime-demo:
+    name: Runtime Security Demo
+    runs-on: ubuntu-latest
+    needs: setup-environment
+    if: contains(github.event.inputs.demo_type, 'runtime') || contains(github.event.inputs.demo_type, 'all')
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run runtime security demo
+      run: |
+        ./demos/runtime-security-demo.sh
+    
+    - name: Simulate attacks
+      run: |
+        ./demos/attacks/simulate-container-escape.sh
+        ./demos/attacks/simulate-sql-injection.sh
+        ./demos/attacks/simulate-privilege-escalation.sh
+    
+    - name: Capture security alerts
+      run: |
+        mkdir -p demo-results/runtime
+        kubectl logs -n falco -l app=falco --tail=1000 > demo-results/runtime/falco-alerts.log
+        kubectl logs -n monitoring -l app=prometheus --tail=1000 > demo-results/runtime/prometheus-alerts.log
+    
+    - name: Upload demo results
+      uses: actions/upload-artifact@v3
+      with:
+        name: runtime-demo-results
+        path: demo-results/runtime/
+
+  compliance-demo:
+    name: Compliance Reporting Demo
+    runs-on: ubuntu-latest
+    needs: [setup-environment, infrastructure-demo, container-demo, runtime-demo]
+    if: always() && (contains(github.event.inputs.demo_type, 'compliance') || contains(github.event.inputs.demo_type, 'all'))
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Generate compliance reports
+      run: |
+        ./demos/compliance-demo.sh
+    
+    - name: Create comprehensive dashboard
+      run: |
+        python compliance/generate-dashboard.py
+    
+    - name: Upload compliance dashboard
+      uses: actions/upload-artifact@v3
+      with:
+        name: compliance-dashboard
+        path: compliance/dashboard.html
+
+  cleanup:
+    name: Cleanup Demo Environment
+    runs-on: ubuntu-latest
+    needs: [setup-environment, infrastructure-demo, container-demo, runtime-demo, compliance-demo]
+    if: always()
+    steps:
+    - name: Cleanup kind cluster
+      run: |
+        kind delete cluster --name sentinel-demo-${{ github.run_number }} || true

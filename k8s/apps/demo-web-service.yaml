@@ -1,0 +1,193 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-web-service
+  namespace: sentinel-apps
+  labels:
+    app: demo-web-service
+    version: v1.0.0
+    # MISSING: security-policy label required by Gatekeeper
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: demo-web-service
+  template:
+    metadata:
+      labels:
+        app: demo-web-service
+        version: v1.0.0
+      annotations:
+        # VULNERABILITY: Disabling security features
+        container.apparmor.security.beta.kubernetes.io/web-service: "unconfined"
+    spec:
+      # VULNERABILITY: Not using service account
+      # serviceAccountName: demo-web-service-sa
+      
+      # VULNERABILITY: No security context
+      # securityContext:
+      #   runAsNonRoot: true
+      #   runAsUser: 1000
+      #   fsGroup: 2000
+      
+      containers:
+      - name: web-service
+        image: sentinel/demo-web-service:latest
+        imagePullPolicy: Always  # VULNERABILITY: Should be IfNotPresent for security
+        
+        # VULNERABILITY: No security context for container
+        # securityContext:
+        #   allowPrivilegeEscalation: false
+        #   readOnlyRootFilesystem: true
+        #   runAsNonRoot: true
+        #   runAsUser: 1000
+        #   capabilities:
+        #     drop:
+        #     - ALL
+        
+        ports:
+        - containerPort: 5000
+          name: http
+          protocol: TCP
+        
+        # VULNERABILITY: Hardcoded secrets in environment variables
+        env:
+        - name: DB_HOST
+          value: "postgres"
+        - name: DB_NAME
+          value: "demo"
+        - name: DB_USER
+          value: "user"
+        - name: DB_PASSWORD
+          value: "password"  # VULNERABLE: Plain text password
+        - name: SECRET_KEY
+          value: "supersecretkey123"  # VULNERABLE: Hardcoded secret
+        - name: FLASK_ENV
+          value: "development"  # VULNERABLE: Development mode in production
+        
+        # VULNERABILITY: No resource limits
+        # resources:
+        #   limits:
+        #     cpu: 500m
+        #     memory: 512Mi
+        #   requests:
+        #     cpu: 250m
+        #     memory: 256Mi
+        
+        # VULNERABILITY: No health checks
+        # livenessProbe:
+        #   httpGet:
+        #     path: /health
+        #     port: 5000
+        #   initialDelaySeconds: 30
+        #   periodSeconds: 10
+        # readinessProbe:
+        #   httpGet:
+        #     path: /health
+        #     port: 5000
+        #   initialDelaySeconds: 5
+        #   periodSeconds: 5
+        
+        # VULNERABILITY: Mounting sensitive paths
+        volumeMounts:
+        - name: host-root
+          mountPath: /host
+          readOnly: true  # At least it's read-only
+        - name: docker-socket
+          mountPath: /var/run/docker.sock
+      
+      # VULNERABILITY: Mounting host filesystem and Docker socket
+      volumes:
+      - name: host-root
+        hostPath:
+          path: /
+      - name: docker-socket
+        hostPath:
+          path: /var/run/docker.sock
+      
+      # VULNERABILITY: No node selector or affinity rules
+      # nodeSelector:
+      #   node-role.kubernetes.io/worker: "true"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-web-service
+  namespace: sentinel-apps
+  labels:
+    app: demo-web-service
+spec:
+  type: NodePort  # VULNERABILITY: Exposing service externally
+  ports:
+  - port: 80
+    targetPort: 5000
+    nodePort: 30080  # VULNERABILITY: Fixed node port
+    protocol: TCP
+    name: http
+  selector:
+    app: demo-web-service
+
+---
+# VULNERABILITY: No network policies restricting traffic
+# apiVersion: networking.k8s.io/v1
+# kind: NetworkPolicy
+# metadata:
+#   name: demo-web-service-netpol
+#   namespace: sentinel-apps
+# spec:
+#   podSelector:
+#     matchLabels:
+#       app: demo-web-service
+#   policyTypes:
+#   - Ingress
+#   - Egress
+#   ingress:
+#   - from:
+#     - namespaceSelector:
+#         matchLabels:
+#           name: default
+#     ports:
+#     - protocol: TCP
+#       port: 5000
+#   egress:
+#   - to:
+#     - podSelector:
+#         matchLabels:
+#           app: postgres
+#     ports:
+#     - protocol: TCP
+#       port: 5432
+
+---
+# VULNERABILITY: Service account with excessive permissions
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: demo-web-service-sa
+  namespace: sentinel-apps
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: demo-web-service-role
+rules:
+# VULNERABILITY: Overly broad permissions
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["*"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: demo-web-service-binding
+subjects:
+- kind: ServiceAccount
+  name: demo-web-service-sa
+  namespace: sentinel-apps
+roleRef:
+  kind: ClusterRole
+  name: demo-web-service-role
+  apiGroup: rbac.authorization.k8s.io

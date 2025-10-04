@@ -1,0 +1,451 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: falco-config
+  namespace: sentinel-security
+  labels:
+    app.kubernetes.io/name: falco
+data:
+  falco.yaml: |
+    # Falco configuration for Project Sentinel
+    
+    # Rules configuration
+    rules_file:
+      - /etc/falco/falco_rules.yaml
+      - /etc/falco/falco_rules.local.yaml
+      - /etc/falco/k8s_audit_rules.yaml
+      - /etc/falco/rules.d
+    
+    # Time format for output
+    time_format_iso_8601: true
+    
+    # JSON output format
+    json_output: true
+    json_include_output_property: true
+    json_include_tags_property: true
+    
+    # Output channels
+    stdout_output:
+      enabled: true
+    
+    syslog_output:
+      enabled: false
+    
+    file_output:
+      enabled: true
+      keep_alive: false
+      filename: /var/log/falco/events.log
+    
+    http_output:
+      enabled: true
+      url: "http://falco-exporter:9376/webhook"
+    
+    # gRPC configuration
+    grpc:
+      enabled: true
+      bind_address: "0.0.0.0:5060"
+      threadiness: 0
+    
+    grpc_output:
+      enabled: true
+    
+    # Rule matching
+    priority: debug
+    
+    # Enable syscall event drops monitoring
+    syscall_event_drops:
+      actions:
+        - log
+        - alert
+      rate: 0.03333
+      max_burst: 1000
+    
+    # Metrics
+    metrics:
+      enabled: true
+      interval: 30s
+      output_rule: true
+      rules_counters_enabled: true
+      resource_utilization_enabled: true
+      state_counters_enabled: true
+      kernel_counters_enabled: true
+      libbpf_stats_enabled: true
+      convert_memory_to_mb: true
+      include_empty_values: false
+    
+    # Load plugins
+    load_plugins: []
+    
+    # Buffered outputs
+    buffered_outputs: false
+    
+    # Outputs rate limiting
+    outputs:
+      rate: 1
+      max_burst: 1000
+    
+  falco_rules.local.yaml: |
+    # Custom Falco rules for Project Sentinel
+    
+    # Detect container escape attempts
+    - rule: Container Escape Attempt
+      desc: Detect attempts to escape container boundaries
+      condition: >
+        spawned_process and
+        (proc.name in (docker, runc, containerd) or
+         proc.cmdline contains "docker" or
+         proc.cmdline contains "runc" or
+         proc.cmdline contains "containerd")
+      output: >
+        Container escape attempt detected
+        (user=%user.name command=%proc.cmdline pid=%proc.pid
+         container=%container.name image=%container.image.repository)
+      priority: CRITICAL
+      tags: [container, escape, attack]
+    
+    # Detect privilege escalation
+    - rule: Privilege Escalation Attempt
+      desc: Detect attempts to escalate privileges
+      condition: >
+        spawned_process and
+        (proc.name in (su, sudo, doas) or
+         proc.cmdline contains "chmod +s" or
+         proc.cmdline contains "setuid")
+      output: >
+        Privilege escalation attempt detected
+        (user=%user.name command=%proc.cmdline pid=%proc.pid
+         container=%container.name)
+      priority: HIGH
+      tags: [privilege, escalation, attack]
+    
+    # Detect suspicious network activity
+    - rule: Suspicious Network Connection
+      desc: Detect outbound connections to suspicious destinations
+      condition: >
+        outbound and
+        (fd.sip.name contains "suspicious.com" or
+         fd.dip.name contains "malware.org" or
+         fd.sport in (1337, 31337, 8080))
+      output: >
+        Suspicious network connection detected
+        (user=%user.name connection=%fd.name proto=%fd.l4proto
+         container=%container.name)
+      priority: HIGH
+      tags: [network, suspicious, attack]
+    
+    # Detect cryptocurrency mining
+    - rule: Cryptocurrency Mining
+      desc: Detect cryptocurrency mining activity
+      condition: >
+        spawned_process and
+        (proc.name in (xmrig, minergate, cgminer, bfgminer) or
+         proc.cmdline contains "stratum" or
+         proc.cmdline contains "mining" or
+         proc.cmdline contains "cryptonight")
+      output: >
+        Cryptocurrency mining detected
+        (user=%user.name command=%proc.cmdline pid=%proc.pid
+         container=%container.name)
+      priority: HIGH
+      tags: [mining, cryptocurrency, attack]
+    
+    # Detect shell spawning in containers
+    - rule: Shell Spawned in Container
+      desc: Detect shell execution in containers
+      condition: >
+        spawned_process and
+        container and
+        (proc.name in (sh, bash, zsh, fish, csh, ksh) or
+         proc.cmdline contains "/bin/sh" or
+         proc.cmdline contains "/bin/bash")
+      output: >
+        Shell spawned in container
+        (user=%user.name shell=%proc.name command=%proc.cmdline
+         container=%container.name image=%container.image.repository
+         pid=%proc.pid)
+      priority: WARNING
+      tags: [shell, container, suspicious]
+    
+    # Detect file access to sensitive directories
+    - rule: Sensitive File Access
+      desc: Detect access to sensitive files and directories
+      condition: >
+        open_read and
+        (fd.name startswith /etc/passwd or
+         fd.name startswith /etc/shadow or
+         fd.name startswith /etc/sudoers or
+         fd.name startswith /root/.ssh or
+         fd.name startswith /home/*/.ssh)
+      output: >
+        Sensitive file access detected
+        (user=%user.name file=%fd.name command=%proc.cmdline
+         container=%container.name pid=%proc.pid)
+      priority: HIGH
+      tags: [file, sensitive, access]
+    
+    # Detect SQL injection attempts
+    - rule: SQL Injection Attempt
+      desc: Detect potential SQL injection in application logs
+      condition: >
+        spawned_process and
+        (proc.cmdline contains "UNION SELECT" or
+         proc.cmdline contains "DROP TABLE" or
+         proc.cmdline contains "'; DELETE" or
+         proc.cmdline contains "1=1" or
+         proc.cmdline contains "OR 1=1")
+      output: >
+        SQL injection attempt detected
+        (user=%user.name command=%proc.cmdline container=%container.name
+         pid=%proc.pid)
+      priority: HIGH
+      tags: [sql, injection, attack, web]
+    
+    # Detect package manager usage
+    - rule: Package Manager Execution
+      desc: Detect package manager execution in containers
+      condition: >
+        spawned_process and
+        container and
+        (proc.name in (apt, apt-get, yum, dnf, apk, pip, npm, gem) or
+         proc.cmdline contains "install" or
+         proc.cmdline contains "upgrade")
+      output: >
+        Package manager executed in container
+        (user=%user.name command=%proc.cmdline container=%container.name
+         pid=%proc.pid)
+      priority: WARNING
+      tags: [package, manager, container]
+    
+    # Detect reverse shell attempts
+    - rule: Reverse Shell Attempt
+      desc: Detect reverse shell connection attempts
+      condition: >
+        spawned_process and
+        (proc.cmdline contains "nc -e" or
+         proc.cmdline contains "netcat -e" or
+         proc.cmdline contains "/dev/tcp" or
+         proc.cmdline contains "bash -i" or
+         proc.cmdline contains "sh -i")
+      output: >
+        Reverse shell attempt detected
+        (user=%user.name command=%proc.cmdline container=%container.name
+         pid=%proc.pid)
+      priority: CRITICAL
+      tags: [reverse, shell, attack]
+    
+    # Detect Docker socket access
+    - rule: Docker Socket Access
+      desc: Detect access to Docker socket
+      condition: >
+        open_read and
+        (fd.name="/var/run/docker.sock" or
+         fd.name startswith "/var/run/docker")
+      output: >
+        Docker socket access detected
+        (user=%user.name file=%fd.name command=%proc.cmdline
+         container=%container.name pid=%proc.pid)
+      priority: HIGH
+      tags: [docker, socket, access, escape]
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: falco
+  namespace: sentinel-security
+  labels:
+    app.kubernetes.io/name: falco
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: falco
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: falco
+    spec:
+      serviceAccountName: falco
+      hostNetwork: true
+      hostPID: true
+      hostIPC: true
+      securityContext:
+        runAsUser: 0
+      containers:
+      - name: falco
+        image: falcosecurity/falco-no-driver:0.35.1
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          privileged: true
+        args:
+          - /usr/bin/falco
+          - --cri=/run/containerd/containerd.sock
+          - --cri=/run/crio/crio.sock
+          - -K=/var/run/secrets/kubernetes.io/serviceaccount/token
+          - -k=https://$(KUBERNETES_SERVICE_HOST)
+          - --k8s-node=$(FALCO_K8S_NODE_NAME)
+          - -pk
+        env:
+        - name: FALCO_K8S_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: FALCO_GRPC_ENABLED
+          value: "true"
+        - name: FALCO_GRPC_BIND_ADDRESS
+          value: "0.0.0.0:5060"
+        - name: FALCO_HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: dev-fs
+          mountPath: /host/dev
+          readOnly: true
+        - name: proc-fs
+          mountPath: /host/proc
+          readOnly: true
+        - name: sys-fs
+          mountPath: /host/sys
+          readOnly: true
+        - name: boot-fs
+          mountPath: /host/boot
+          readOnly: true
+        - name: lib-modules
+          mountPath: /host/lib/modules
+          readOnly: true
+        - name: usr-fs
+          mountPath: /host/usr
+          readOnly: true
+        - name: etc-fs
+          mountPath: /host/etc
+          readOnly: true
+        - name: docker-socket
+          mountPath: /var/run/docker.sock
+          readOnly: true
+        - name: containerd-socket
+          mountPath: /run/containerd/containerd.sock
+          readOnly: true
+        - name: cri-socket
+          mountPath: /run/crio/crio.sock
+          readOnly: true
+        - name: falco-config
+          mountPath: /etc/falco
+        - name: falco-logs
+          mountPath: /var/log/falco
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 512Mi
+        ports:
+        - name: grpc
+          containerPort: 5060
+          protocol: TCP
+        livenessProbe:
+          grpc:
+            port: 5060
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          grpc:
+            port: 5060
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: dev-fs
+        hostPath:
+          path: /dev
+      - name: proc-fs
+        hostPath:
+          path: /proc
+      - name: sys-fs
+        hostPath:
+          path: /sys
+      - name: boot-fs
+        hostPath:
+          path: /boot
+      - name: lib-modules
+        hostPath:
+          path: /lib/modules
+      - name: usr-fs
+        hostPath:
+          path: /usr
+      - name: etc-fs
+        hostPath:
+          path: /etc
+      - name: docker-socket
+        hostPath:
+          path: /var/run/docker.sock
+          type: Socket
+      - name: containerd-socket
+        hostPath:
+          path: /run/containerd/containerd.sock
+          type: Socket
+      - name: cri-socket
+        hostPath:
+          path: /run/crio/crio.sock
+          type: Socket
+      - name: falco-config
+        configMap:
+          name: falco-config
+      - name: falco-logs
+        emptyDir: {}
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/control-plane
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: falco
+  namespace: sentinel-security
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: falco
+rules:
+- apiGroups: [""]
+  resources: ["nodes", "pods", "services", "events"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets", "daemonsets"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: falco
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: falco
+subjects:
+- kind: ServiceAccount
+  name: falco
+  namespace: sentinel-security
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: falco
+  namespace: sentinel-security
+  labels:
+    app.kubernetes.io/name: falco
+spec:
+  selector:
+    app.kubernetes.io/name: falco
+  ports:
+  - name: grpc
+    port: 5060
+    targetPort: 5060
+    protocol: TCP
+  type: ClusterIP

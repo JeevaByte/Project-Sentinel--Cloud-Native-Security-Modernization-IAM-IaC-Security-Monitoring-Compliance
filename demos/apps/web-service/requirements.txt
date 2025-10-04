@@ -1,0 +1,30 @@
+# Demo Web Service Requirements
+# INTENTIONAL VULNERABILITIES: Using outdated packages with known vulnerabilities
+
+# Core application dependencies
+Flask==2.0.1           # VULNERABLE: Outdated version with security issues
+psycopg2-binary==2.8.6 # VULNERABLE: Outdated PostgreSQL adapter
+PyJWT==1.7.1           # VULNERABLE: Critical security vulnerability (CVE-2022-29217)
+
+# Utility dependencies with vulnerabilities
+requests==2.25.1       # VULNERABLE: Outdated version
+urllib3==1.26.2        # VULNERABLE: Multiple security issues
+cryptography==3.3.2    # VULNERABLE: Outdated crypto library
+
+# Development dependencies (should not be in production)
+debugpy==1.5.1         # VULNERABILITY: Debug tools in production
+ptvsd==4.3.2           # VULNERABILITY: Debug adapter
+ipython==7.16.1        # VULNERABILITY: Interactive shell in production
+
+# Dependencies with known CVEs
+jinja2==2.11.3         # VULNERABLE: Template injection issues
+werkzeug==1.0.1        # VULNERABLE: Multiple security issues
+click==7.1.2           # VULNERABLE: Command injection potential
+
+# Transitive dependencies with issues
+itsdangerous==1.1.0    # VULNERABLE: Cryptographic issues
+markupsafe==1.1.1      # VULNERABLE: XSS potential
+
+# Optional dependencies that shouldn't be in production
+pytest==6.2.2          # Should only be in dev requirements
+coverage==5.5          # Testing tool - security risk in production
